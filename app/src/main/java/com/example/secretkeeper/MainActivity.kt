@@ -11,12 +11,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.foundation.background
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.example.secretkeeper.ui.theme.SecretKeeperTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +29,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
+
+    private var isLoading by mutableStateOf(false) // State for loading animation
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,12 +45,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             SecretKeeperTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        onEncryptClick = { selectFileForEncryption() },
-                        onDecryptClick = { selectEncryptedFileForDecryption() },
-                        onManageKeysClick = { openKeyManagement() }
-                    )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        MainScreen(
+                            modifier = Modifier.padding(innerPadding),
+                            onEncryptClick = { selectFileForEncryption() },
+                            onDecryptClick = { selectEncryptedFileForDecryption() },
+                            onManageKeysClick = { openKeyManagement() }
+                        )
+
+                        if (isLoading) {
+                            LoadingOverlay()
+                        }
+                    }
                 }
             }
         }
@@ -105,10 +117,12 @@ class MainActivity : ComponentActivity() {
         val encryptedFile = File(downloadsDir, "encrypted_${inputFileName}.${inputFileExtension}.enc")
 
         CoroutineScope(Dispatchers.IO).launch {
+            isLoading = true // Start loading animation
             val fileEncryptor = FileEncryptor(this@MainActivity)
             val success = fileEncryptor.encryptFile(inputFile, encryptedFile)
 
             withContext(Dispatchers.Main) {
+                isLoading = false // Stop loading animation
                 if (success) {
                     showToast("File encrypted successfully! Saved at: ${encryptedFile.absolutePath}")
                 } else {
@@ -120,10 +134,12 @@ class MainActivity : ComponentActivity() {
 
     private fun decryptFile(encryptedFile: File, outputFile: File) {
         CoroutineScope(Dispatchers.IO).launch {
+            isLoading = true // Start loading animation
             val fileEncryptor = FileEncryptor(this@MainActivity)
             val success = fileEncryptor.decryptFile(encryptedFile, outputFile)
 
             withContext(Dispatchers.Main) {
+                isLoading = false // Stop loading animation
                 if (success) {
                     showToast("File decrypted successfully! Saved at: ${outputFile.absolutePath}")
                 } else {
@@ -205,6 +221,20 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(text = "Manage Keys")
+        }
+    }
+}
+
+@Composable
+fun LoadingOverlay() {
+    Dialog(onDismissRequest = {}) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(Color(0x80000000), shape = androidx.compose.foundation.shape.CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Color.White)
         }
     }
 }

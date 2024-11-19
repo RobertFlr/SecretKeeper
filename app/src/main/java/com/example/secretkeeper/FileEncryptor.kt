@@ -14,6 +14,7 @@ class FileEncryptor(private val context: Context) {
         private const val TAG = "FileEncryptor"
         private const val IV_SIZE = 12 // GCM recommended IV size
         private const val TAG_SIZE = 128 // GCM authentication tag size in bits
+        private const val BUFFER_SIZE = 8192 // 8 KB buffer for streaming
     }
 
     fun encryptFile(inputFile: File, outputFile: File): Boolean {
@@ -24,12 +25,12 @@ class FileEncryptor(private val context: Context) {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, key)
 
-            val iv = cipher.iv // Get the generated IV
+            val iv = cipher.iv
             outputFile.outputStream().use { fileOut ->
-                fileOut.write(iv) // Prepend IV to the output file
-                CipherOutputStream(fileOut, cipher).use { cipherOut ->
-                    inputFile.inputStream().use { fileIn ->
-                        fileIn.copyTo(cipherOut)
+                fileOut.write(iv) // Write IV to the output file
+                inputFile.inputStream().use { fileIn ->
+                    CipherOutputStream(fileOut, cipher).buffered(BUFFER_SIZE).use { cipherOut ->
+                        fileIn.copyTo(cipherOut, BUFFER_SIZE)
                     }
                 }
             }
@@ -50,20 +51,17 @@ class FileEncryptor(private val context: Context) {
 
             encryptedFile.inputStream().use { fileIn ->
                 val iv = ByteArray(IV_SIZE)
-                fileIn.read(iv) // Extract IV from the file
+                fileIn.read(iv) // Read IV from the input file
 
                 val cipher = Cipher.getInstance("AES/GCM/NoPadding")
                 val gcmSpec = GCMParameterSpec(TAG_SIZE, iv)
                 cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec)
 
-                // Ensure the file doesn't already exist
-                if (outputFile.exists()) {
-                    outputFile.delete()
-                }
-
-                outputFile.outputStream().use { fileOut ->
-                    CipherInputStream(fileIn, cipher).use { cipherIn ->
-                        cipherIn.copyTo(fileOut)
+                outputFile.outputStream().apply {
+                    channel.truncate(0) // Ensure the output file is empty
+                }.use { fileOut ->
+                    CipherInputStream(fileIn, cipher).buffered(BUFFER_SIZE).use { cipherIn ->
+                        cipherIn.copyTo(fileOut, BUFFER_SIZE)
                     }
                 }
             }
