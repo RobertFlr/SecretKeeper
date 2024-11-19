@@ -21,8 +21,6 @@ import java.io.File
 
 class MainActivity : ComponentActivity() {
 
-    private var selectedFileUri: Uri? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -30,8 +28,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
                         modifier = Modifier.padding(innerPadding),
-                        onSelectFileClick = { selectFileForEncryption() },
-                        onEncryptClick = { encryptFile() },
+                        onEncryptClick = { selectFileForEncryption() },
                         onDecryptClick = { selectEncryptedFileForDecryption() }
                     )
                 }
@@ -39,19 +36,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val selectFileLauncher =
+    private val selectFileForEncryptionLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             if (uri != null) {
-                selectedFileUri = uri
-                showToast("File selected for encryption: $uri")
+                encryptFile(uri)
             } else {
-                showToast("No file selected")
+                showToast("No file selected for encryption")
             }
         }
-
-    private fun selectFileForEncryption() {
-        selectFileLauncher.launch("*/*")
-    }
 
     private val selectEncryptedFileLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -75,41 +67,41 @@ class MainActivity : ComponentActivity() {
 
                 val fileEncryptor = FileEncryptor(this)
                 if (fileEncryptor.decryptFile(encryptedFile, finalOutputFile)) {
-                    showToast("File decrypted and renamed successfully! Saved at: ${finalOutputFile.absolutePath}")
+                    showToast("File decrypted successfully! Saved at: ${finalOutputFile.absolutePath}")
                 } else {
                     showToast("Decryption failed.")
                 }
             } else {
-                showToast("No file selected")
+                showToast("No file selected for decryption")
             }
         }
+
+    private fun selectFileForEncryption() {
+        selectFileForEncryptionLauncher.launch("*/*")
+    }
 
     private fun selectEncryptedFileForDecryption() {
         selectEncryptedFileLauncher.launch("*/*")
     }
 
-    private fun encryptFile() {
-        if (selectedFileUri != null) {
-            val inputFile = uriToFile(selectedFileUri!!) ?: run {
-                showToast("Failed to access file")
-                return
-            }
+    private fun encryptFile(uri: Uri) {
+        val inputFile = uriToFile(uri) ?: run {
+            showToast("Failed to access file for encryption")
+            return
+        }
 
-            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            val inputFileName = inputFile.nameWithoutExtension
-            val inputFileExtension = inputFile.extension
-            val encryptedFile = File(downloadsDir, "encrypted_${inputFileName}.${inputFileExtension}.enc")
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val inputFileName = inputFile.nameWithoutExtension
+        val inputFileExtension = inputFile.extension
+        val encryptedFile = File(downloadsDir, "encrypted_${inputFileName}.${inputFileExtension}.enc")
 
-            Log.d("EncryptFile", "Input file name: ${inputFile.name}")
-            Log.d("EncryptFile", "Encrypted file name: ${encryptedFile.name}")
-            val fileEncryptor = FileEncryptor(this)
-            if (fileEncryptor.encryptFile(inputFile, encryptedFile)) {
-                showToast("File encrypted successfully! Saved at: ${encryptedFile.absolutePath}")
-            } else {
-                showToast("Encryption failed.")
-            }
+        Log.d("EncryptFile", "Input file name: ${inputFile.name}")
+        Log.d("EncryptFile", "Encrypted file name: ${encryptedFile.name}")
+        val fileEncryptor = FileEncryptor(this)
+        if (fileEncryptor.encryptFile(inputFile, encryptedFile)) {
+            showToast("File encrypted successfully! Saved at: ${encryptedFile.absolutePath}")
         } else {
-            showToast("No file selected")
+            showToast("Encryption failed.")
         }
     }
 
@@ -146,7 +138,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
-    onSelectFileClick: () -> Unit,
     onEncryptClick: () -> Unit,
     onDecryptClick: () -> Unit
 ) {
@@ -157,15 +148,6 @@ fun MainScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(
-            onClick = onSelectFileClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Select File for Encryption")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         Button(
             onClick = onEncryptClick,
             modifier = Modifier.fillMaxWidth()
