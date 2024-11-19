@@ -1,5 +1,6 @@
 package com.example.secretkeeper
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -23,13 +24,22 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check for active key, create one if there is none
+        if (KeyManager.loadKey(this) == null) {
+            val defaultKey = KeyManager.generateNewKey()
+            KeyManager.saveKey(this, defaultKey)
+            Log.d("MainActivity", "Generated a default AES key.")
+        }
+
         setContent {
             SecretKeeperTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
                         modifier = Modifier.padding(innerPadding),
                         onEncryptClick = { selectFileForEncryption() },
-                        onDecryptClick = { selectEncryptedFileForDecryption() }
+                        onDecryptClick = { selectEncryptedFileForDecryption() },
+                        onManageKeysClick = { openKeyManagement() }
                     )
                 }
             }
@@ -69,7 +79,7 @@ class MainActivity : ComponentActivity() {
                 if (fileEncryptor.decryptFile(encryptedFile, finalOutputFile)) {
                     showToast("File decrypted successfully! Saved at: ${finalOutputFile.absolutePath}")
                 } else {
-                    showToast("Decryption failed.")
+                    showToast("Decryption failed. Make sure you are decrypting with the same key that was used to encrypt the file.")
                 }
             } else {
                 showToast("No file selected for decryption")
@@ -130,6 +140,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun openKeyManagement() {
+        val intent = Intent(this, KeyManagementActivity::class.java)
+        startActivity(intent)
+    }
+
     private fun showToast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
@@ -139,7 +154,8 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     modifier: Modifier = Modifier,
     onEncryptClick: () -> Unit,
-    onDecryptClick: () -> Unit
+    onDecryptClick: () -> Unit,
+    onManageKeysClick: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -162,6 +178,15 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(text = "Decrypt File")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onManageKeysClick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = "Manage Keys")
         }
     }
 }

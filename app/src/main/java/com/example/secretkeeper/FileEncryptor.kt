@@ -1,32 +1,43 @@
 package com.example.secretkeeper
 
 import android.content.Context
-import androidx.security.crypto.EncryptedFile
-import androidx.security.crypto.MasterKey
+import android.util.Log
 import java.io.File
+import javax.crypto.Cipher
+import javax.crypto.CipherInputStream
+import javax.crypto.CipherOutputStream
+import javax.crypto.spec.GCMParameterSpec
 
 class FileEncryptor(private val context: Context) {
 
+    companion object {
+        private const val TAG = "FileEncryptor"
+        private const val IV_SIZE = 12 // GCM recommended IV size
+        private const val TAG_SIZE = 128 // GCM authentication tag size in bits
+    }
+
     fun encryptFile(inputFile: File, outputFile: File): Boolean {
         return try {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
+            val key = KeyManager.loadKey(context)
+                ?: throw IllegalStateException("No active key available for encryption")
 
-            val encryptedFile = EncryptedFile.Builder(
-                context,
-                outputFile,
-                masterKey,
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build()
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.ENCRYPT_MODE, key)
 
-            encryptedFile.openFileOutput().use { outputStream ->
-                inputFile.inputStream().use { inputStream ->
-                    inputStream.copyTo(outputStream)
+            val iv = cipher.iv // Get the generated IV
+            outputFile.outputStream().use { fileOut ->
+                fileOut.write(iv) // Prepend IV to the output file
+                CipherOutputStream(fileOut, cipher).use { cipherOut ->
+                    inputFile.inputStream().use { fileIn ->
+                        fileIn.copyTo(cipherOut)
+                    }
                 }
             }
+
+            Log.d(TAG, "File encrypted successfully: ${outputFile.absolutePath}")
             true
         } catch (e: Exception) {
+            Log.e(TAG, "Encryption failed: ${e.message}")
             e.printStackTrace()
             false
         }
@@ -34,24 +45,28 @@ class FileEncryptor(private val context: Context) {
 
     fun decryptFile(encryptedFile: File, outputFile: File): Boolean {
         return try {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
+            val key = KeyManager.loadKey(context)
+                ?: throw IllegalStateException("No active key available for decryption")
 
-            val decryptedFile = EncryptedFile.Builder(
-                context,
-                encryptedFile,
-                masterKey,
-                EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
-            ).build()
+            encryptedFile.inputStream().use { fileIn ->
+                val iv = ByteArray(IV_SIZE)
+                fileIn.read(iv) // Extract IV from the file
 
-            decryptedFile.openFileInput().use { inputStream ->
-                outputFile.outputStream().use { outputStream ->
-                    inputStream.copyTo(outputStream)
+                val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+                val gcmSpec = GCMParameterSpec(TAG_SIZE, iv)
+                cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec)
+
+                CipherInputStream(fileIn, cipher).use { cipherIn ->
+                    outputFile.outputStream().use { fileOut ->
+                        cipherIn.copyTo(fileOut)
+                    }
                 }
             }
+
+            Log.d(TAG, "File decrypted successfully: ${outputFile.absolutePath}")
             true
         } catch (e: Exception) {
+            Log.e(TAG, "Decryption failed: ${e.message}")
             e.printStackTrace()
             false
         }
