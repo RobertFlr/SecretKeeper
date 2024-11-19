@@ -18,6 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.secretkeeper.ui.theme.SecretKeeperTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -75,12 +79,7 @@ class MainActivity : ComponentActivity() {
                     .removeSuffix(".enc")
                 val finalOutputFile = File(downloadsDir, "decrypted_${originalFileName}")
 
-                val fileEncryptor = FileEncryptor(this)
-                if (fileEncryptor.decryptFile(encryptedFile, finalOutputFile)) {
-                    showToast("File decrypted successfully! Saved at: ${finalOutputFile.absolutePath}")
-                } else {
-                    showToast("Decryption failed. Make sure you are decrypting with the same key that was used to encrypt the file.")
-                }
+                decryptFile(encryptedFile, finalOutputFile)
             } else {
                 showToast("No file selected for decryption")
             }
@@ -105,13 +104,32 @@ class MainActivity : ComponentActivity() {
         val inputFileExtension = inputFile.extension
         val encryptedFile = File(downloadsDir, "encrypted_${inputFileName}.${inputFileExtension}.enc")
 
-        Log.d("EncryptFile", "Input file name: ${inputFile.name}")
-        Log.d("EncryptFile", "Encrypted file name: ${encryptedFile.name}")
-        val fileEncryptor = FileEncryptor(this)
-        if (fileEncryptor.encryptFile(inputFile, encryptedFile)) {
-            showToast("File encrypted successfully! Saved at: ${encryptedFile.absolutePath}")
-        } else {
-            showToast("Encryption failed.")
+        CoroutineScope(Dispatchers.IO).launch {
+            val fileEncryptor = FileEncryptor(this@MainActivity)
+            val success = fileEncryptor.encryptFile(inputFile, encryptedFile)
+
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    showToast("File encrypted successfully! Saved at: ${encryptedFile.absolutePath}")
+                } else {
+                    showToast("Encryption failed.")
+                }
+            }
+        }
+    }
+
+    private fun decryptFile(encryptedFile: File, outputFile: File) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val fileEncryptor = FileEncryptor(this@MainActivity)
+            val success = fileEncryptor.decryptFile(encryptedFile, outputFile)
+
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    showToast("File decrypted successfully! Saved at: ${outputFile.absolutePath}")
+                } else {
+                    showToast("Decryption failed. Make sure you are decrypting with the same key that was used to encrypt the file.")
+                }
+            }
         }
     }
 
