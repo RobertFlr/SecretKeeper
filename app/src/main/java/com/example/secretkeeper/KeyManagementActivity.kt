@@ -2,6 +2,9 @@ package com.example.secretkeeper
 
 import android.os.Bundle
 import android.util.Base64
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -49,8 +52,14 @@ class KeyManagementActivity : ComponentActivity() {
     private fun exportCurrentKey() {
         val currentKey = KeyManager.loadKey(this)
         if (currentKey != null) {
-            val keyString = Base64.encodeToString(currentKey.encoded, Base64.DEFAULT)
-            Toast.makeText(this, "Current key: $keyString", Toast.LENGTH_LONG).show()
+            val keyString = android.util.Base64.encodeToString(currentKey.encoded, android.util.Base64.DEFAULT)
+
+            // Copy to clipboard
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("MasterKey", keyString)
+            clipboard.setPrimaryClip(clip)
+
+            Toast.makeText(this, "Key copied to clipboard!", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "No key found!", Toast.LENGTH_SHORT).show()
         }
@@ -103,7 +112,7 @@ fun KeyManagementScreen(
             onClick = onExportKeyClick,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Export Current Key")
+            Text(text = "Export Key (Copy to Clipboard)")
         }
     }
 }

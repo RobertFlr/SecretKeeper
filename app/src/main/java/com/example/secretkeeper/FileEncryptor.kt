@@ -56,8 +56,13 @@ class FileEncryptor(private val context: Context) {
                 val gcmSpec = GCMParameterSpec(TAG_SIZE, iv)
                 cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec)
 
-                CipherInputStream(fileIn, cipher).use { cipherIn ->
-                    outputFile.outputStream().use { fileOut ->
+                // Ensure the file doesn't already exist
+                if (outputFile.exists()) {
+                    outputFile.delete()
+                }
+
+                outputFile.outputStream().use { fileOut ->
+                    CipherInputStream(fileIn, cipher).use { cipherIn ->
                         cipherIn.copyTo(fileOut)
                     }
                 }
