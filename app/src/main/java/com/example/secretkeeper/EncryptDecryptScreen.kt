@@ -12,7 +12,8 @@ import androidx.compose.ui.unit.dp
 fun EncryptDecryptScreen(
     onEncryptClick: () -> Unit,
     onDecryptClick: () -> Unit,
-    onNavigateToKeyManagement: () -> Unit
+    onNavigateToKeyManagement: () -> Unit,
+    onNavigateToS3: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -35,6 +36,12 @@ fun EncryptDecryptScreen(
 
         Button(onClick = onNavigateToKeyManagement, modifier = Modifier.fillMaxWidth()) {
             Text(text = "Manage Keys")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onNavigateToS3, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "S3 Operations")
         }
     }
 }

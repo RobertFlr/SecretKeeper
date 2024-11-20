@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "encryptDecrypt") {
                         addEncryptDecryptScreen(navController)
                         addKeyManagementScreen(navController)
+                        addS3Screen(navController)
                     }
 
                     if (isLoading) {
@@ -70,7 +71,8 @@ class MainActivity : ComponentActivity() {
             EncryptDecryptScreen(
                 onEncryptClick = { selectFileForEncryption() },
                 onDecryptClick = { selectEncryptedFileForDecryption() },
-                onNavigateToKeyManagement = { navController.navigate("keyManagement") }
+                onNavigateToKeyManagement = { navController.navigate("keyManagement") },
+                onNavigateToS3 = { navController.navigate("s3Screen") }
             )
         }
     }
@@ -82,6 +84,15 @@ class MainActivity : ComponentActivity() {
                 onSetKeyClick = { setExistingKey(it) },
                 onExportKeyClick = { exportCurrentKey() },
                 onBackClick = { navController.popBackStack() }
+            )
+        }
+    }
+
+    private fun NavGraphBuilder.addS3Screen(navController: NavController) {
+        composable("s3Screen") {
+            S3Screen(
+                onUploadFile = { selectFileForUpload() }, // Updated logic to use file selector
+                onDownloadFile = { key -> handleFileDownload(key) }
             )
         }
     }
@@ -122,12 +133,25 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private val selectFileForUploadLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                uploadFileToS3(uri)
+            } else {
+                showToast("No file selected for upload")
+            }
+        }
+
     private fun selectFileForEncryption() {
         selectFileForEncryptionLauncher.launch("*/*")
     }
 
     private fun selectEncryptedFileForDecryption() {
         selectEncryptedFileLauncher.launch("*/*")
+    }
+
+    private fun selectFileForUpload() {
+        selectFileForUploadLauncher.launch("*/*")
     }
 
     private fun encryptFile(uri: Uri) {
@@ -169,6 +193,40 @@ class MainActivity : ComponentActivity() {
                     showToast("File decrypted successfully! Saved at: ${outputFile.absolutePath}")
                 } else {
                     showToast("Decryption failed. Make sure you are decrypting with the same key that was used to encrypt the file.")
+                }
+            }
+        }
+    }
+
+    private fun uploadFileToS3(uri: Uri) {
+        val file = uriToFile(uri) ?: run {
+            showToast("Failed to access file for uploading")
+            return
+        }
+
+        val s3Manager = S3Manager(this)
+        CoroutineScope(Dispatchers.IO).launch {
+            isLoading = true
+            s3Manager.uploadFile(file, file.name) { success, message ->
+                CoroutineScope(Dispatchers.Main).launch {
+                    isLoading = false
+                    showToast(if (success) "Upload successful!" else "Upload failed: $message")
+                }
+            }
+        }
+    }
+
+    private fun handleFileDownload(key: String) {
+        val s3Manager = S3Manager(context = this)
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val outputFile = File(downloadsDir, key)
+
+        s3Manager.downloadFile(key, outputFile) { success, message ->
+            runOnUiThread {
+                if (success) {
+                    showToast("File downloaded successfully!")
+                } else {
+                    showToast("File download failed: $message")
                 }
             }
         }

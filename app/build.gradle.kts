@@ -37,6 +37,21 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes.addAll(
+                listOf(
+                    "META-INF/INDEX.LIST",
+                    "META-INF/LICENSE",
+                    "META-INF/LICENSE.txt",
+                    "META-INF/NOTICE",
+                    "META-INF/NOTICE.txt",
+                    "META-INF/DEPENDENCIES",
+                    "META-INF/io.netty.versions.properties"
+                )
+            )
+        }
+    }
 }
 
 dependencies {
@@ -47,6 +62,10 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     // Optional: Material Design Components
     implementation(libs.material)
+    // S3
+    implementation(libs.s3)
+    implementation(libs.aws.android.sdk.core)
+    implementation(libs.aws.android.sdk.s3)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
