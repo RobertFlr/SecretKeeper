@@ -8,13 +8,21 @@ coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
+kotlinxCoroutinesTest = "1.7.1"
 lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
 composeBom = "2024.04.01"
 material = "1.12.0"
+mockitoCore = "4.11.0"
+mockitoInlineVersion = "4.11.0"
+mockitoKotlin = "4.1.0"
 navigationCompose = "2.8.4"
 s3 = "2.20.10"
 securityCrypto = "1.1.0-alpha06"
+truth = "1.1.4"
+androidxCoreKtx = "1.6.1"
+uiTestJunit4Android = "1.7.6"
+core = "1.47.0"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -37,8 +45,16 @@ androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoCore" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockitoKotlin" }
+mockito-mockito-inline = { module = "org.mockito:mockito-inline", version.ref = "mockitoInlineVersion" }
 s3 = { module = "software.amazon.awssdk:s3", version.ref = "s3" }
+truth = { module = "com.google.truth:truth", version.ref = "truth" }
+core-ktx = { group = "androidx.test", name = "core-ktx", version.ref = "androidxCoreKtx" }
+androidx-ui-test-junit4-android = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiTestJunit4Android" }
+core = { group = "com.google.ar", name = "core", version.ref = "core" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

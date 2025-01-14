@@ -1,5 +1,7 @@
 package com.example.secretkeeper
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,7 +16,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.foundation.background
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.app.NotificationCompat
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.NavHost
@@ -33,7 +38,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import javax.crypto.spec.SecretKeySpec
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
@@ -72,7 +79,8 @@ class MainActivity : ComponentActivity() {
                 onEncryptClick = { selectFileForEncryption() },
                 onDecryptClick = { selectEncryptedFileForDecryption() },
                 onNavigateToKeyManagement = { navController.navigate("keyManagement") },
-                onNavigateToS3 = { navController.navigate("s3Screen") }
+                onNavigateToS3 = { navController.navigate("s3Screen") },
+                onCreateDummyFile = { createDummyFile() }
             )
         }
     }
@@ -91,10 +99,36 @@ class MainActivity : ComponentActivity() {
     private fun NavGraphBuilder.addS3Screen(navController: NavController) {
         composable("s3Screen") {
             S3Screen(
-                onUploadFile = { selectFileForUpload() }, // Updated logic to use file selector
+                onUploadFile = { selectFileForUpload() },
                 onDownloadFile = { key -> handleFileDownload(key) }
             )
         }
+    }
+
+    private fun createDummyFile() {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val randomName = generateRandomString(7)
+        val dummyFile = File(downloadsDir, "$randomName.txt")
+
+        try {
+            FileOutputStream(dummyFile).use { output ->
+                val data = "A".repeat(1024) // 1 KB of data
+                repeat(5120) { // Repeat 5120 times to create 5 MB
+                    output.write(data.toByteArray())
+                }
+            }
+            showToast("Dummy file created: ${dummyFile.absolutePath}")
+        } catch (e: Exception) {
+            e.printStackTrace()
+            showToast("Failed to create dummy file")
+        }
+    }
+
+    private fun generateRandomString(length: Int): String {
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        return (1..length)
+            .map { chars[Random.nextInt(chars.length)] }
+            .joinToString("")
     }
 
     private val selectFileForEncryptionLauncher =
@@ -198,6 +232,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun showNotification(title: String, message: String) {
+        val notificationId = System.currentTimeMillis().toInt()
+        val channelId = "upload_download_channel"
+
+        // Creează un manager pentru notificări
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        // Creează canalul de notificare (necesar pentru Android 8.0+)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Upload/Download Notifications",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notifications for file upload/download status"
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Creează notificarea
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        // Afișează notificarea
+        notificationManager.notify(notificationId, notification)
+    }
+
     private fun uploadFileToS3(uri: Uri) {
         val file = uriToFile(uri) ?: run {
             showToast("Failed to access file for uploading")
@@ -210,6 +276,7 @@ class MainActivity : ComponentActivity() {
             s3Manager.uploadFile(file, file.name) { success, message ->
                 CoroutineScope(Dispatchers.Main).launch {
                     isLoading = false
+                    showNotification("Upload Push Noto.", "Dummy tekst!")
                     showToast(if (success) "Upload successful!" else "Upload failed: $message")
                 }
             }

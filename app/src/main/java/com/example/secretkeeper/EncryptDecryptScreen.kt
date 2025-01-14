@@ -13,7 +13,8 @@ fun EncryptDecryptScreen(
     onEncryptClick: () -> Unit,
     onDecryptClick: () -> Unit,
     onNavigateToKeyManagement: () -> Unit,
-    onNavigateToS3: () -> Unit
+    onNavigateToS3: () -> Unit,
+    onCreateDummyFile: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -42,6 +43,12 @@ fun EncryptDecryptScreen(
 
         Button(onClick = onNavigateToS3, modifier = Modifier.fillMaxWidth()) {
             Text(text = "S3 Operations")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onCreateDummyFile, modifier = Modifier.fillMaxWidth()) {
+            Text(text = "Create Dummy File")
         }
     }
 }
